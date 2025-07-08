@@ -1,78 +1,153 @@
-[![Open in Visual Studio Code](https://classroom.github.com/assets/open-in-vscode-2e0aaae1b6195c2367325f4f02e2d04e9abb55f0b24a779b69b11b9e10269abc.svg)](https://classroom.github.com/online_ide?assignment_repo_id=19910863&assignment_repo_type=AssignmentRepo)
-# Real-Time Chat Application with Socket.io
+Task 1: Project Setup
+✅ Node.js Server with Express
+Initialize project:
 
-This assignment focuses on building a real-time chat application using Socket.io, implementing bidirectional communication between clients and server.
+bash
+mkdir server && cd server  
+npm init -y  
+Install dependencies:
 
-## Assignment Overview
+bash
+npm install express socket.io cors  
+Create server entry file (index.js):
 
-You will build a chat application with the following features:
-1. Real-time messaging using Socket.io
-2. User authentication and presence
-3. Multiple chat rooms or private messaging
-4. Real-time notifications
-5. Advanced features like typing indicators and read receipts
+js
+const express = require('express');
+const http = require('http');
+const cors = require('cors');
+const socketIO = require('socket.io');
 
-## Project Structure
+const app = express();
+const server = http.createServer(app);
+const io = socketIO(server, { cors: { origin: '*' } });
 
-```
-socketio-chat/
-├── client/                 # React front-end
-│   ├── public/             # Static files
-│   ├── src/                # React source code
-│   │   ├── components/     # UI components
-│   │   ├── context/        # React context providers
-│   │   ├── hooks/          # Custom React hooks
-│   │   ├── pages/          # Page components
-│   │   ├── socket/         # Socket.io client setup
-│   │   └── App.jsx         # Main application component
-│   └── package.json        # Client dependencies
-├── server/                 # Node.js back-end
-│   ├── config/             # Configuration files
-│   ├── controllers/        # Socket event handlers
-│   ├── models/             # Data models
-│   ├── socket/             # Socket.io server setup
-│   ├── utils/              # Utility functions
-│   ├── server.js           # Main server file
-│   └── package.json        # Server dependencies
-└── README.md               # Project documentation
-```
+app.use(cors());
 
-## Getting Started
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+});
 
-1. Accept the GitHub Classroom assignment invitation
-2. Clone your personal repository that was created by GitHub Classroom
-3. Follow the setup instructions in the `Week5-Assignment.md` file
-4. Complete the tasks outlined in the assignment
+server.listen(4000, () => console.log('Server running on port 4000'));
+✅ React Front-End Setup
+Initialize client with Vite:
 
-## Files Included
+bash
+npm create vite@latest client --template react  
+cd client  
+npm install  
+npm install socket.io-client  
+Set up Socket.io Client (socket.js):
 
-- `Week5-Assignment.md`: Detailed assignment instructions
-- Starter code for both client and server:
-  - Basic project structure
-  - Socket.io configuration templates
-  - Sample components for the chat interface
+js
+import { io } from 'socket.io-client';
+export const socket = io('http://localhost:4000');
+Establish Basic Connection in App Component:
 
-## Requirements
+js
+import { useEffect } from 'react';
+import { socket } from './socket';
 
-- Node.js (v18 or higher)
-- npm or yarn
-- Modern web browser
-- Basic understanding of React and Express
+useEffect(() => {
+  socket.on('connect', () => {
+    console.log('Connected:', socket.id);
+  });
+}, []);
+💬 Task 2: Core Chat Functionality
+✅ User Authentication
+Simple Username-based: Prompt for username and store it in context or localStorage.
 
-## Submission
+JWT Approach (optional): Implement login API on server and verify tokens using jsonwebtoken.
 
-Your work will be automatically submitted when you push to your GitHub Classroom repository. Make sure to:
+✅ Global Chat Room
+Server:
 
-1. Complete both the client and server portions of the application
-2. Implement the core chat functionality
-3. Add at least 3 advanced features
-4. Document your setup process and features in the README.md
-5. Include screenshots or GIFs of your working application
-6. Optional: Deploy your application and add the URLs to your README.md
+js
+io.on('connection', socket => {
+  socket.on('chatMessage', ({ user, message }) => {
+    io.emit('chatMessage', { user, message, timestamp: Date.now() });
+  });
+});
+Client: Listen to 'chatMessage' and update messages in state.
 
-## Resources
+✅ Display Messages
+Render each message with name and timestamp using:
 
-- [Socket.io Documentation](https://socket.io/docs/v4/)
-- [React Documentation](https://react.dev/)
-- [Express.js Documentation](https://expressjs.com/)
-- [Building a Chat Application with Socket.io](https://socket.io/get-started/chat) 
+js
+<span>{msg.user}:</span> <span>{msg.text}</span> <span>{new Date(msg.timestamp).toLocaleTimeString()}</span>
+✅ Typing Indicators
+Server:
+
+js
+socket.on('typing', (user) => {
+  socket.broadcast.emit('typing', user);
+});
+Client: Emit 'typing' when user types and show indicator if received.
+
+✅ Online/Offline Status
+Track users by storing socket IDs and broadcast 'userOnline' and 'userOffline' events when they connect/disconnect.
+
+🚀 Task 3: Advanced Chat Features
+✅ Private Messaging
+Use socket.to(targetSocketId).emit('privateMessage', data)
+
+✅ Multiple Chat Rooms
+Use socket.join('roomName') Emit messages to specific room: io.to('roomName').emit(...)
+
+✅ "User is Typing" Indicator
+Already covered in Task 2, but extended to specific rooms or private messages.
+
+✅ File/Image Sharing
+Use socket.emit('fileMessage', { name, data }) after base64-encoding files or use APIs for upload/download.
+
+✅ Read Receipts
+Track when messages are rendered in the client and emit a 'messageRead' event to notify sender.
+
+✅ Message Reactions
+Maintain reaction state per message and emit updates via socket.emit('reaction', { msgId, reaction })
+
+🔔 Task 4: Real-Time Notifications
+✅ New Message Notification
+Listen for 'chatMessage' and use Toast/Sound/Badge.
+
+✅ User Join/Leave
+Emit 'userJoined' and 'userLeft' events and display messages like “Joshua joined the room.”
+
+✅ Unread Message Count
+Track unread messages per conversation and display count badge.
+
+✅ Sound Notifications
+Use:
+
+js
+const audio = new Audio('/notify.mp3');
+audio.play();
+✅ Browser Notifications
+Use:
+
+js
+Notification.requestPermission().then(() => {
+  new Notification("New Message", { body: "Joshua sent a message!" });
+});
+🔧 Task 5: Performance and UX Optimization
+✅ Message Pagination
+Server: Support query params like /messages?before=timestamp
+
+Client: Load on scroll or "Load older" button
+
+✅ Reconnection Logic
+Socket.io supports auto-reconnect. Add listeners for connect_error and reconnect_attempt.
+
+✅ Namespaces and Rooms
+Use namespaces like /chat and rooms for topic-based chats.
+
+✅ Message Delivery Acknowledgment
+Use callback on socket.emit('message', data, ack => ...) to confirm delivery.
+
+✅ Message Search
+Filter messages on client or implement keyword-based search on server.
+
+✅ Mobile Responsiveness
+Use Tailwind CSS for layout:
+
+html
+<div className="w-full sm:w-3/4 md:w-2/3 lg:w-1/2 mx-auto p-4">
